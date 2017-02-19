@@ -1,0 +1,114 @@
+#!/bin/bash
+#
+# EX: sh /var/www/deploy-web-artifact.sh --artifact mysite.com-2017.1.1.tar.gz --build-version 2017.1.1 --keep 10 --path /var/www/mysite.com
+
+YELLOW='\033[0;33m'
+YELLOW_BOLD='\033[1;33m'
+BLUE='\033[0;34m'
+BLUE_BOLD='\033[1;34m'
+NC='\033[0m' # No Color
+
+die()
+{
+	local _ret=$2
+	test -n "$_ret" || _ret=1
+	test "$_PRINT_HELP" = yes && print_help >&2
+  echo ""
+	echo "$YELLOW_BOLD$1 $NC" >&2
+  print_help;
+	exit ${_ret}
+}
+
+# MAKE SURE WE HAVE ARGS
+if [ $# -eq 0 ]; then
+    die "Arguments missing"
+fi
+
+# THE PARSING ITSELF
+while test $# -gt 0
+do
+	_key="$1"
+	case "$_key" in
+
+		--artifact|--artifact=*)
+			ARTIFACT=$2
+			shift
+			;;
+
+		--build-version|--build-version=*)
+			BUILD_VERSION=$2
+      shift
+			;;
+
+		--path|--path=*)
+			DEPLOY_PATH=$2
+      shift
+			;;
+
+		--keep|--keep=*)
+			KEEP=$2
+      shift
+			;;
+
+		--help)
+			print_help
+			exit 0
+			;;
+		*)
+		die "FATAL ERROR: Got an unexpected argument '$1'" 1
+		;;
+	esac
+	shift
+done
+
+# Check on all required args
+if [ -z "$ARTIFACT" ]; then
+    die "Arguments '--artifact' missing"
+fi
+
+if [ -z "$BUILD_VERSION" ]; then
+    die "Arguments '--build-version' missing"
+fi
+
+if [ -z "$DEPLOY_PATH" ]; then
+    die "Arguments '--path' missing"
+fi
+
+if [ -z "$KEEP" ]; then
+    KEEP=5
+fi
+
+echo ""
+
+echo -e "$BLUE_BOLD - Deploying artifact... $NC"
+
+echo -e "$BLUE  ├─ Creating release directory: $DEPLOY_PATH/releases/$BUILD_VERSION $NC"
+mkdir -p $DEPLOY_PATH/releases/$BUILD_VERSION
+
+echo -e "$BLUE  ├─ Extracting: /tmp/$ARTIFACT to $DEPLOY_PATH/releases/$BUILD_VERSION $NC"
+tar -zxf /tmp/$ARTIFACT -C $DEPLOY_PATH/releases/$BUILD_VERSION
+
+echo -e "$BLUE  ├─ Updating symlink to new release $NC"
+ln -sfn $DEPLOY_PATH/releases/$BUILD_VERSION $DEPLOY_PATH/current
+
+echo -e "$BLUE  ├─ Removing $DEPLOY_PATH/tmp/$ARTIFACT $NC"
+rm /tmp/$ARTIFACT
+
+echo -e "$BLUE  ├─ Removing old directories $NC"
+
+CNTR=0;
+for D in $(find "$DEPLOY_PATH/releases" -maxdepth 1 -type d | sort -Vr) ; do
+  ((CNTR+=1));
+  if [[ "$D" != "$DEPLOY_PATH/releases" ]] && [ "$CNTR" -gt "$KEEP" ]; then
+  echo -e "$BLUE    ─ $D $NC"
+    rm -rf $D;
+  fi
+done
+
+echo -e "$BLUE  └- Setting file permissions $NC"
+find $DEPLOY_PATH/releases/$BUILD_VERSION -type d -exec chmod 755 {} +
+find $DEPLOY_PATH/releases/$BUILD_VERSION -type f -exec chmod 644 {} +
+
+echo ""
+
+exit
