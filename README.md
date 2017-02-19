@@ -2,9 +2,9 @@
 
 Deploys deploy-web-artifact.sh script
 
-This script assumes you've got the same setup as me. Fork it and make it fit your needs.
-1. Jenkins deploys the artifact to /tmp
-2. Artifact is a `*.tar.gz`
+This script assumes you've got the same setup as me. Fork it and make it fit your needs.<br>
+1. Jenkins deploys the artifact to /tmp<br>
+2. Artifact is a `*.tar.gz`<br>
 3. Your site's root is something like /var/www/mysite.com/current
 
 EX: sh /var/www/deploy-web-artifact.sh --artifact mysite.com-2017.1.1.tar.gz --build-version 2017.1.1 --keep 10 --path /var/www/mysite.com
